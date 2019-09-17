@@ -14,7 +14,7 @@ Use VNets to:
 *   Privatize the data plane of supported PAAS services such as SQL MI, ASE, APIM, etc. Examples are instead of the transfer of data over public networks transfer over a private network such as your VNET including hybrid connections such as ExpressRoute).  Examples of VNET Integration: (ASE: https://aka.ms/AA5ygph, App Service: https://aka.ms/AA5ygpk, and Private Link: https://aka.ms/AA62xe2
 *   Create shared services that can be shared by multiple workloads, such as network virtual appliances (NVAs) and DNS servers, in a single location.  
 
-Hub and Spoke Architecture
+# Hub and Spoke Architecture
 
 There are plenty of reasons for connecting a single VNet to your ExpressRoute circuit. After all, a vnet can support up to 65,513 IP addresses, thousands of subnets, and thousands of network blocks.  For many, these limits are enough to create an entire virtual data center within a single vnet!  The single vnet model is ideal for customers who have a single subscription for their Azure footprint and prefer to use subnets as a way of creating segmentation for networking security and workload assignment.  
 However, for others, and single VNet is not enough to address the complexity of their business model in the Cloud.  This complexity often stems from their need to support multiple subscriptions using a centralized IT model which will offer shared services across different tenants or application stacks.  The ability to assign each tenant to their own subscription allows for a high degree of granularity and segmentation for billing, role-based access, and network security. 
@@ -31,7 +31,7 @@ The most flexible, effective way of realizing this topology within Azure is by w
 *   User Defined Routes.  You can create custom routes in your VNets to override Azure's default system routes, or to add additional routes to a subnet's route table. In Azure, you create a route table, then associate the route table to one or more virtual network subnets.  UDRs allow you to route traffic to virtual appliances (NVAs), VPN Gateways, Internet, etc.  https://aka.ms/AA5z1t3.  It's also important to understand how Aure selects a route: https://aka.ms/AA62lkm.
 *   Please always reference Azure VNET Subscription Limits:  https://aka.ms/AA62lkr
 
-The diagram below details a transitive HUB VNET and spoke VNET topology.
+# The diagram below details a transitive HUB VNET and spoke VNET topology.
 
 ![alt text](https://github.com/jgmitter/images/blob/master/hub%20and%20spoke.jpg)
 
