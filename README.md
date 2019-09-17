@@ -2,7 +2,8 @@
  
 An Azure Virtual Network (VNet) is like a virtual routing and forwarding (VRF) instance in a traditional network.  It provides a logical network building block to create your network infrastructure on Azure.  It is virtual network isolation on the Azure cloud dedicated to your subscription.  You use a VNET to build or create multiple subnets to support your CIDR design. IP Subnet (Think of a VLAN):  Provides full layer-3 semantics and partial layer-2 semantics (DHCP, ARP, no broadcast/multicast).  You can optionally peer or connect VNETs with other VNETs as long as address ranges do not overlap.  
 
-![alt text](https://github.com/jgmitter/images/blob/master/pic2.png)
+![alt text](https://github.com/jgmitter/images/blob/master/hub%20and%20spoke.jpg)
+
 
 Use VNets to:
 •	Link your on-premise IT infrastructure to create a hybrid connection to Azure via VPN (S2S and P2S) or ExpressRoute Private-Peering with a virtual network gateway deployed within a VNET. https://aka.ms/AA5ynvj and https://aka.ms/AA5yt4p
@@ -32,7 +33,7 @@ The most flexible, effective way of realizing this topology within Azure is by w
 
 The diagram below details a transitive HUB VNET and spoke VNET topology.
 
-![alt text](https://github.com/jgmitter/images/blob/master/pic2.png)
+![alt text](https://github.com/jgmitter/images/blob/master/vnet.jpg)
 
 
 
