@@ -46,58 +46,75 @@ If ExpressRoute is in use to allow connectivity from on-prem locations, we can l
 ![alt text](https://github.com/jgmitter/images/blob/master/jg1.png)
  
 By the VNET peerings established in the figure above, the Microsoft Edge routers (MSEEs) will receive the summary routes of the HUB and Spoke VNETs in the West region. Specifically, the MSEEs will know about the routes 10.0.0.0/16 (from West 2 HUB), 10.1.0.0/16 (from West 2 Spoke 1), and 10.4.0.0/16 (from West 2 Spoke 2). At this point, however, the MSEEs are the only capable routing device that knows about these individual routes. The spokes do not have routes to each other, and although the HUB is aware of both spokes, it is not transitive by default and therefore cannot route traffic between them. With each spoke having (in most cases) a default route the internet, when spoke one tries to talk to spoke 2, this traffic will try and route through the internet using its default route and then fail.
+
 If we advertise a default route (0.0.0.0/0) or a summary route of all the VNETs in the region (10.0.0.0/8), we can change this behavior and allow spoke to spoke communication. As the default or summary route gets advertised from on-prem, the hub will receive this route and propagate this route down into the spokes. As a result, each spoke now has a new route instead of the default to the internet. For instance, if we were to advertise a summary route of 10.0.0.0/8 from on-prem, both spokes would receive this route. When spoke one tried to talk to spoke 2, the new summary route would be the closest match and traffic would be sent towards ExpressRoute. Since the MSEEs are aware of the individual routes, we are now able to route back up ExpressRoute to the other spoke. These default or summary routes merely allow us a mechanism to pull spoke to spoke traffic down to the MSEEs which is the only device which knows the specific spoke’s address space.
+
 The advantage to this approach is that by advertising a summary or default route, we provide the ability for spoke to spoke routing natively within the Azure backbone via the MSEEs. Also, this traffic is specifically identified within Azure and does not trigger any VNET peering costs, so it is completely free to the customer. The downside to this approach is that traffic is limited to the bandwidth of the ExpressRoute gateway SKU size and latency of hair-pinning off of the MSEEs which are in the peering location of your ExpressRoute circuit. For example, if I am using the Standard Express Route Gateway SKU, I have a bandwidth limit of 1G. This throughput limit would also apply to spoke to spoke communications using this method.  If the latency is X ms, it is doubled due to hair-pinning at the peering location.  
 
+ ![alt text](https://github.com/jgmitter/images/blob/master/jg2.png)
  
-Option 2: Leveraging a HUB NVA
+# Option 2: Leveraging a HUB NVA
 
 A secondary option for allowing spoke to spoke communication would be to leverage an NVA in a HUB VNET to route traffic between the spokes. In this scenario, we deploy an NVA of our choosing into the HUB and define static UDRs within each spoke to route to the NVA to get to the other spoke.
  
+![alt text](https://github.com/jgmitter/images/blob/master/jg3.png) 
 
 This approach has some advantages over Option 1. However, it also comes with its own set of disadvantages. As opposed to Option 1 in which we are routing all the way down to the MSEEs, we are manually doing this at the HUB level. As a result, we no longer need to worry about advertising in a default or summary route which may relieve some administrative overhead but might also result in some lower latency as we are communicating through a HUB rather than through an MSEE. In all reality, the improvement here is fairly low as the Azure backbone doesn’t add too much latency. However, this may be beneficial for workloads looking to shave some additional milliseconds.
+
 Additionally, we do not have the bandwidth limitation of the ExpressRoute gateway as this is no longer in the path. One final advantage of leveraging an NVA for this functionality would be the granular control and inspection capabilities this NVA comes with. Spoke to spoke traffic can now be fully inspected and subject to the NVAs granular policy set using this method.
+
 The disadvantages of this approach come first with the cost of deploying an NVA. Regardless of NVA chosen, there will be an additional cost for running the NVA and, typically, a throughput cost for the traffic traversing the NVA. While we lose the bandwidth limitation of the ExpressRoute gateway in this scenario, NVAs have bandwidth limitations of their own, which could be a bottleneck for this traffic. Understanding the specific throughput limitations of the NVA chosen would be critical when leveraging this method. Finally, when leveraging Option 1, the Azure fabric recognizes this data path and does not apply charges for the traffic when it traverses the VNET peerings. If using an NVA, all traffic which traverses VNET peerings to reach the NVA will incur VNET peering costs.
-Option 3: VNET Peering
+
+# Option 3: VNET Peering
 
 The 3rd option for allowing spoke to spoke communication would be to directly peer the spokes requiring communication. Similar to how each spoke is VNET peered to the HUB, and additional VNET peer would be created between the two spokes which require communication.
  
-The advantage of this option is spokes are now directly connected via the Azure backbone and have the lowest latency path possible. Additionally, no bandwidth restrictions exist along the path, so hosts are only limited by the amount of data they can push.
-The disadvantage of this approach is the additional cost associated with VNET peering as well as the scale limitations should spokes continue to grow. As multiple spokes are introduced behind a hub and require connectivity, a full mesh of VNET peers would be required to provide this connectivity.
-Inter-Region VNET Routing Options
+![alt text](https://github.com/jgmitter/images/blob/master/jg4.png)
 
-Inter-Region VNET Routing Options
+The advantage of this option is spokes are now directly connected via the Azure backbone and have the lowest latency path possible. Additionally, no bandwidth restrictions exist along the path, so hosts are only limited by the amount of data they can push.
+
+The disadvantage of this approach is the additional cost associated with VNET peering as well as the scale limitations should spokes continue to grow. As multiple spokes are introduced behind a hub and require connectivity, a full mesh of VNET peers would be required to provide this connectivity.
 
 As the Hub and Spoke model is replicated across regions, spoke to spoke communication options change a little bit. In environments where spoke to spoke communication is required between regions, there are three different options for allowing this connectivity. Each option has advantages and disadvantages, which will be discussed below for inter-region communications, and these options can be co-mingled for various workloads.
-Option 1: Leveraging Bow-Tied ExpressRoute Connections
+
+# Inter-Region VNET Routing Options
+
+# Option 1: Leveraging Bow-Tied ExpressRoute Connections
+
 A best practice for providing redundancy and connectivity between regions and on-premise is to bow-tie connect ExpressRoute Gateways with adjacent ExpressRoute circuits in different regions, as shown in  below. Not only does this provide connectivity to on-premise, but you also establish connectivity between the ExpressRoute circuits to the cross-regional VNets with no transit charges. The bow-tie cross-regional connectivity between VNets to the ExpressRoute circuits would enable communications between the US West 2 VNET Hub and Spokes to communicate with the US East 2 VNet Hub and Spokes. 
+
 This option allows inter-regional Azure communication for the private deployment to ride over the Microsoft backbone. The Hub VNET attached to an ExpressRoute gateway will advertise its VNET address space as well as connected VNET Spoke address space(s) (by selecting ‘Use Remote Gateway’) towards the ExpressRoute Circuit. Since both regions are bow-tied, each Hub VNET will learn about their neighboring region VNETS and provide native communication between any inter-region Hub to Hub, Hub to Spoke or Spoke to Spoke communication.
 
- 
+![alt text](https://github.com/jgmitter/images/blob/master/jg5.png)
+
 The VNET peerings established in the figure above, the Microsoft Edge routers (MSEEs) will receive the summary routes of the HUB and Spoke VNETs in the US West 2 region. Specifically, the MSEEs will know about the routes 10.0.0.0/16 (from West 2 HUB), 10.1.0.0/16 (from West 2 Spoke 1), and 10.4.0.0/16 (from West 2 Spoke 2). At this point, however, the MSEEs are the only capable routing device that knows about these individual routes. As the routes get advertised from the MSEEs, the HUB in each region will receive the neighboring region routes and propagate this route down into the spokes. As a result, each spoke now has a new route to reach networks in the other region. Since the MSEEs are aware of the individual routes, we are now able to route back up ExpressRoute to the other spoke.
+
 The advantage to this approach is by simply bow-tie connecting the ExpressRoute Gateways in each region to each regions ExpressRoute circuits you gain the ability for the inter-region hub to hub, hub to spoke and spoke to spoke routing natively within the Azure backbone with no transit fee.  The downside to this approach is that traffic is limited to the bandwidth of the ExpressRoute gateway SKU size and latency of hair-pinning off of the MSEEs which are in the peering location of your ExpressRoute circuit. For example, if I am using the Standard Express Route Gateway SKU, I have a bandwidth limit of 1G. This throughput limit would also apply to spoke to spoke communications using this method.  If the latency is X ms, it is doubled due to hair-pinning at the peering location.  The ExpressRoute Gateway is in the path for ingress traffic only.  
 
-Option 2: Leveraging a HUB NVA
+# Option 2: Leveraging a HUB NVA
+
 A secondary option for allowing Inter Region spoke to spoke communication would be to leverage an NVA in each HUB VNET to route traffic between the spokes. In this scenario, we deploy an NVA of our choosing into the HUB and define UDRs within each spoke to route to the NVA to get to the other spoke.
+
+![alt text](https://github.com/jgmitter/images/blob/master/jg6.png)
  
 As opposed to Option 1 in which we are routing all down to the MSEEs, we are manually doing this at the HUB level. As a result, some lower latency as we are communicating through a HUB via Global VNET Peering rather than through an MSEE. We do not have the bandwidth limitation of the ExpressRoute gateway on ingress traffic patterns as this is no longer in the path. One final advantage of leveraging an NVA for this functionality would be the granular control and inspection capabilities this NVA comes with. Spoke to spoke traffic can now be fully inspected and subject to the NVAs granular policy set using this method. 
 
 The disadvantages of this approach come first with the cost of deploying an NVA. Regardless of NVA chosen, there will be an additional cost for running the NVA and, typically, a throughput cost for the traffic traversing the NVA. While we lose the bandwidth limitation of the ExpressRoute gateway in this scenario, NVAs have bandwidth limitations of their own, which could be a bottleneck for this traffic. Understanding the specific throughput limitations of the NVA chosen would be critical when leveraging this method. Finally, when leveraging Option 1, the Azure fabric recognizes this data path and does not apply charges for the traffic when it traverses the VNET peerings. If using an NVA, all traffic which traverses VNET peerings to reach the NVA will incur vnet peering costs.
 
-Option 3: Global VNET Peering
+# Option 3: Global VNET Peering
 
 The 3rd option for allowing spoke to spoke communication would be to directly Global VNET peer the spokes requiring communication. Similar to how each spoke is VNET peered to the HUB, and a Global VNET peer would be created between the two spokes which require communication.
 
+![alt text](https://github.com/jgmitter/images/blob/master/jg7.png)
+
 The advantage of this option is spokes are now directly connected via the Azure backbone and have the lowest latency and highest bandwidth path possible.
+
 The disadvantage of this approach is the additional cost associated with Global VNET peering as well as the scale limitations should spokes continue to grow. As multiple spokes are introduced behind a hub and require connectivity, a full mesh of VNET peers would be required to provide this connectivity.
 
+![alt text](https://github.com/jgmitter/images/blob/master/jg8.png)
  
 Reference: https://azure.microsoft.com/en-us/pricing/details/virtual-network/
 Pricing Calculator to explore the options defined above: https://azure.microsoft.com/en-us/pricing/calculator/
-
-
-
-
 
 
 
